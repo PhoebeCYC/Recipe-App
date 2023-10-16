@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <recipetypes>
+        <recipeType id="1" name="Breakfast" />
+        <recipeType id="2" name="Lunch" />
+        <recipeType id="3" name="Dinner" />
+        <recipeType id="4" name="Dessert" />
+        <!-- Add more recipe types as needed -->
+    </recipetypes>
+</resources>
