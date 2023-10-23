@@ -1,6 +1,7 @@
 package com.example.recipeapp.activity
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -23,8 +24,15 @@ import com.example.recipeapp.adapter.RecipeTypeAdapter
 import com.example.recipeapp.dataBean.RecipeType
 import com.example.recipeapp.databinding.ActivityNewRecipeBinding
 import com.example.recipeapp.popUp.BottomPopUp
+import com.example.recipeapp.utils.CompressFileEngineUtils
+import com.example.recipeapp.utils.GlideEngineUtils
 import com.example.recipeapp.viewModel.RecipeViewModel
 import com.example.recipeapp.viewModel.RecipeViewModelFactory
+import com.luck.picture.lib.basic.PictureSelectionModel
+import com.luck.picture.lib.basic.PictureSelector
+import com.luck.picture.lib.config.PictureConfig
+import com.luck.picture.lib.config.SelectMimeType
+import com.luck.picture.lib.config.SelectModeConfig
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -111,10 +119,12 @@ class NewRecipeActivity : AppCompatActivity() {
     }
 
     private fun selectImage() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        intent.type = "image/*"
-        startActivityForResult(intent, REQUEST_IMAGE_PICK)
+        val selectionModel: PictureSelectionModel = PictureSelector.create(this)
+            .openGallery(SelectMimeType.ofImage())
+            .setImageEngine(GlideEngineUtils.createGlideEngine())
+            .setSelectionMode(SelectModeConfig.SINGLE)
+            .setCompressEngine(CompressFileEngineUtils().getCompressEngine())
+        selectionModel.forResult(PictureConfig.CHOOSE_REQUEST)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -128,31 +138,48 @@ class NewRecipeActivity : AppCompatActivity() {
                     Toast.makeText(this,"Permission was denied." ,Toast.LENGTH_SHORT).show()
                 }
             }
+            READ_EXTERNAL_STORAGE_REQUEST -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    selectImage()
+                } else {
+                    Toast.makeText(this,"Permission was denied." ,Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        when(resultCode) {
+            Activity.RESULT_OK -> {
+                when (requestCode){
+                    REQUEST_IMAGE_CAPTURE -> {
+                        val imageBitmap = data?.extras?.get("data") as Bitmap
 
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as Bitmap
+                        Glide.with(this)
+                            .load(imageBitmap)
+                            .apply(RequestOptions()
+                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                .skipMemoryCache(true))
+                            .into(binding.recipeImageView)
 
-            Glide.with(this)
-                .load(imageBitmap)
-                .apply(RequestOptions()
-                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                    .skipMemoryCache(true))
-                .into(binding.recipeImageView)
+                        selectedImageUri = saveImageToGallery(imageBitmap)
+                    }
+                    PictureConfig.CHOOSE_REQUEST  -> {
+                        val selectList = PictureSelector.obtainSelectorList(data)
+                        for (media in selectList) {
+                            Glide.with(this)
+                                .load(media.path)
+                                .apply(RequestOptions()
+                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                    .skipMemoryCache(true))
+                                .into(binding.recipeImageView)
 
-            selectedImageUri = saveImageToGallery(imageBitmap)
-
-
-        } else if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK) {
-            selectedImageUri = data?.data
-
-            Glide.with(this)
-                .load(selectedImageUri)
-                .into(binding.recipeImageView)
+                            selectedImageUri = Uri.parse(media.path)
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -1,6 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-android")
+    kotlin("kapt")
 }
 
 android {
@@ -38,6 +40,12 @@ android {
         viewBinding = true
         dataBinding = true
     }
+    kapt {
+        generateStubs = true
+        correctErrorTypes = true
+    }
+
+
 }
 
 dependencies {
@@ -46,6 +54,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.room:room-common:2.6.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
@@ -53,4 +62,12 @@ dependencies {
     implementation("androidx.cardview:cardview:1.0.0")
     implementation ("com.github.bumptech.glide:glide:4.12.0")
     annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
+
+    implementation ("androidx.room:room-runtime:2.6.0")
+    kapt ("androidx.room:room-compiler:2.6.0")
+    implementation("androidx.room:room-ktx:2.4.0") // Use the appropriate version
+
+    implementation("io.github.lucksiege:pictureselector:v3.11.1")
+    implementation("io.github.lucksiege:compress:v3.11.1")
+
 }

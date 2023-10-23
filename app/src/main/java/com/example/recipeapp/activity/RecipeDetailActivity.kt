@@ -39,10 +39,12 @@ class RecipeDetailActivity : AppCompatActivity(), View.OnClickListener {
             binding.ingredientsEditText.setText(recipe.ingredients)
             binding.stepsEditText.setText(recipe.steps)
 
-            Glide.with(this)
-                .load(recipe.imageUri)
-                .error(R.mipmap.default_photo)
-                .into(binding.recipeImageView)
+            if(recipe.imageUri != null) {
+                Glide.with(this)
+                    .load(recipe.imageUri)
+                    .error(R.mipmap.default_photo)
+                    .into(binding.recipeImageView)
+            }
         }
 
         initListener()

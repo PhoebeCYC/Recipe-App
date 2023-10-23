@@ -2,7 +2,6 @@ package com.example.recipeapp
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
@@ -14,6 +13,8 @@ import com.example.recipeapp.activity.NewRecipeActivity
 import com.example.recipeapp.activity.RecipeDetailActivity
 import com.example.recipeapp.adapter.RecipeListAdapter
 import com.example.recipeapp.dataBean.Recipe
+import com.example.recipeapp.dataBean.RecipeContract
+import com.example.recipeapp.dataBean.RecipeDatabaseHelper
 import com.example.recipeapp.databinding.ActivityMainBinding
 import com.example.recipeapp.viewModel.RecipeViewModel
 import com.example.recipeapp.viewModel.RecipeViewModelFactory
@@ -52,6 +53,68 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         viewModel.filteredRecipesLiveData.observe(this) { filteredRecipes ->
             recipeListAdapter.updateRecipe(filteredRecipes)
         }
+
+        retrieveData()
+    }
+
+    private fun retrieveData(){
+        val dbHelper = RecipeDatabaseHelper(this)
+        val db = dbHelper.readableDatabase
+
+        val projection = arrayOf(
+            RecipeContract.RecipeEntry._ID,
+            RecipeContract.RecipeEntry.COLUMN_NAME,
+            RecipeContract.RecipeEntry.COLUMN_DESCRIPTION,
+            RecipeContract.RecipeEntry.COLUMN_TYPE_ID,
+            RecipeContract.RecipeEntry.COLUMN_STEPS,
+            RecipeContract.RecipeEntry.COLUMN_INGREDIENTS,
+            RecipeContract.RecipeEntry.COLUMN_IMAGE_URI
+        )
+
+        val sortOrder = "${RecipeContract.RecipeEntry.COLUMN_NAME} ASC"
+
+        val cursor = db.query(
+            RecipeContract.RecipeEntry.TABLE_NAME,   // The table to query
+            projection,                            // The columns to return
+            null,                                  // The columns for the WHERE clause (null indicates no WHERE clause)
+            null,                                  // The values for the WHERE clause (null indicates no WHERE clause)
+            null,                                  // Don't group the rows
+            null,                                  // Don't filter by row groups
+            sortOrder                              // The sort order
+        )
+        while (cursor.moveToNext()) {
+            val recipeId = cursor.getInt(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry._ID))
+
+            // Check if the recipe ID already exists in the list
+            val isDuplicate = viewModel.recipes.any { it.id == recipeId }
+
+            if (!isDuplicate) {
+                val recipeId =
+                    cursor.getInt(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry._ID))
+                val name =
+                    cursor.getString(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_NAME))
+                val description =
+                    cursor.getString(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_DESCRIPTION))
+                val steps =
+                    cursor.getString(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_STEPS))
+                val typeId =
+                    cursor.getInt(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_TYPE_ID))
+                val ingredients =
+                    cursor.getString(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_INGREDIENTS))
+                val imageUri =
+                    cursor.getString(cursor.getColumnIndexOrThrow(RecipeContract.RecipeEntry.COLUMN_IMAGE_URI))
+
+                var recipe = Recipe(recipeId, name, description, typeId, steps, ingredients, imageUri)
+                viewModel.recipes.add(recipe)
+            }
+        }
+        viewModel.allRecipes = viewModel.recipes
+
+        cursor.close()
+        db.close()
+
+        recipeListAdapter.updateRecipe(viewModel.allRecipes)
+        viewModel.filterRecipesByType(viewModel.positionCurrent + 1)
     }
 
     private fun initListener() {
@@ -61,6 +124,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             override fun onItemClick(recipe: Recipe) {
                 val intent = Intent(this@MainActivity, RecipeDetailActivity::class.java)
                 intent.putExtra("recipeId", recipe.id)
+                intent.putExtra("recipeName", recipe.name)
                 startActivity(intent)
             }
         })
@@ -80,10 +144,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun refreshRecipeList() {
-        viewModel.getLatestRecipeList().observe(this) { recipes ->
-            recipeListAdapter.updateRecipe(recipes)
-        }
-
+        retrieveData()
         recipeListAdapter.notifyDataSetChanged()
     }
 
@@ -114,7 +175,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 typeId = typeId,
                 ingredients = ingredients,
                 steps = steps,
-                imageUri = Uri.parse(imageUri)
+                imageUri = imageUri
             )
             viewModel.addRecipe(newRecipe)
             refreshRecipeList()
